@@ -1,0 +1,2 @@
+steam_dataset_2025_csv/* filter=lfs diff=lfs merge=lfs -text
+*.csv filter=lfs diff=lfs merge=lfs -text
