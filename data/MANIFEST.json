@@ -1,0 +1,110 @@
+[
+  {
+    "package": "csv",
+    "table": "applications",
+    "file": "csv/applications.csv",
+    "rows": 239664,
+    "columns": 30,
+    "sha256": "6a1999738847c25dfc0bd09dd17496deae5fe327e576130a1ea6bc62f8909e9e",
+    "size_mb": 171.74
+  },
+  {
+    "package": "csv",
+    "table": "reviews",
+    "file": "csv/reviews.csv",
+    "rows": 1048148,
+    "columns": 23,
+    "sha256": "11a02b251e7106dccd4a54a0f4e5403b75aa69bbea8fa40dfeaf229c2ff01b5a",
+    "size_mb": 638.78
+  },
+  {
+    "package": "csv",
+    "table": "genres",
+    "file": "csv/genres.csv",
+    "rows": 154,
+    "columns": 2,
+    "sha256": "97d9641573804dfa271b7de83bcfdba39cfb0abc70dc810ee8f90e8bb86471aa",
+    "size_mb": 0.0
+  },
+  {
+    "package": "csv",
+    "table": "categories",
+    "file": "csv/categories.csv",
+    "rows": 462,
+    "columns": 2,
+    "sha256": "8f378fed283197cd7318cd436f5c8c622d651e50e5eac3802ab3957d400676fa",
+    "size_mb": 0.01
+  },
+  {
+    "package": "csv",
+    "table": "developers",
+    "file": "csv/developers.csv",
+    "rows": 101226,
+    "columns": 2,
+    "sha256": "778f81958ab63bb973f7115abc164536abbe56f722811fa662e7e06e6658f8f0",
+    "size_mb": 1.97
+  },
+  {
+    "package": "csv",
+    "table": "publishers",
+    "file": "csv/publishers.csv",
+    "rows": 85699,
+    "columns": 2,
+    "sha256": "a53ae1d3aaefdd49caea6cb927819b8a4504a707118d5afe4d17c235b2d6f030",
+    "size_mb": 1.68
+  },
+  {
+    "package": "csv",
+    "table": "platforms",
+    "file": "csv/platforms.csv",
+    "rows": 3,
+    "columns": 2,
+    "sha256": "c4330d0f5dc92b4c9594c05803a1dce87a0a9a29715ddc33859a7dea17ce8149",
+    "size_mb": 0.0
+  },
+  {
+    "package": "csv",
+    "table": "application_genres",
+    "file": "csv/application_genres.csv",
+    "rows": 587515,
+    "columns": 2,
+    "sha256": "ebe0d83029c8d4662376b018781592e51e0b567f04f64e6b157b93fed8d50dca",
+    "size_mb": 6.21
+  },
+  {
+    "package": "csv",
+    "table": "application_categories",
+    "file": "csv/application_categories.csv",
+    "rows": 1077156,
+    "columns": 2,
+    "sha256": "3b402378ff5eedf8fb0876bdb5951974d46ff0b8808fbb020a483d8612d560a6",
+    "size_mb": 11.84
+  },
+  {
+    "package": "csv",
+    "table": "application_developers",
+    "file": "csv/application_developers.csv",
+    "rows": 250817,
+    "columns": 2,
+    "sha256": "2d3d300042aa8854a4e7fb8b44e1931770e83c72f5c98b6560962c2717db5fac",
+    "size_mb": 3.27
+  },
+  {
+    "package": "csv",
+    "table": "application_publishers",
+    "file": "csv/application_publishers.csv",
+    "rows": 223048,
+    "columns": 2,
+    "sha256": "ab7289c7ccf41920fd43326fbebfed47d465db0185e2d80813acfa017b52cc58",
+    "size_mb": 2.9
+  },
+  {
+    "package": "csv",
+    "table": "application_platforms",
+    "file": "csv/application_platforms.csv",
+    "rows": 334671,
+    "columns": 2,
+    "sha256": "959ef24ff62d2ed114c024bebc76a678a8e1b2b6c5b35100db58f1b5c0699871",
+    "size_mb": 3.11
+  }
+]
