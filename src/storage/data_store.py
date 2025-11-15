@@ -6,3 +6,160 @@
 # 3. Build AVL indexes for key attributes (like price or rating)
 # 4. Expose methods to get or modify data through indexes
 # Purpose: Link raw data with AVL trees for efficient access.
+
+from .avl_tree import AVLTree
+
+
+class DataStore:
+
+    def __init__(self, index_attributes: list):
+        """
+        index_attributes: list of fields to index with AVL Trees.
+        Example: ["user_id", "age", "rating"]
+        """
+        self.records = []                  # raw records (list of dicts)
+        self.index_attributes = index_attributes
+
+        # Each indexed attribute gets its own AVL tree
+        self.indexes = {attr: AVLTree() for attr in index_attributes}
+
+        # Keep track of AVL roots
+        self.roots = {attr: None for attr in index_attributes}
+
+
+    # ---------------------------------------------------------
+    # INSERT RECORD
+    # ---------------------------------------------------------
+    def insert_record(self, record: dict):
+        """
+        Insert a new record into the raw storage and update AVL indexes.
+        Returns the record_id (its index in self.records).
+        """
+        record_id = len(self.records)
+        self.records.append(record)
+
+        # Update each AVL index
+        for attr in self.index_attributes:
+            key = record[attr]
+            tree = self.indexes[attr]
+            root = self.roots[attr]
+
+            # If the key already exists, append to its list of record IDs
+            node = tree.search(root, key)
+            if node:
+                node.value.append(record_id)
+            else:
+                # Create a new node with a list containing this record ID
+                self.roots[attr] = tree.insert(root, key, [record_id])
+
+        return record_id
+
+
+    # ---------------------------------------------------------
+    # LOOKUP EXACT VALUE
+    # ---------------------------------------------------------
+    def search_by_attr(self, attr: str, key):
+        """
+        Returns list of records where record[attr] == key.
+        Uses AVL index for fast lookup.
+        """
+        tree = self.indexes[attr]
+        root = self.roots[attr]
+
+        node = tree.search(root, key)
+        if not node:
+            return []
+
+        return [self.records[rid] for rid in node.value]
+
+
+    # ---------------------------------------------------------
+    # RANGE QUERY
+    # ---------------------------------------------------------
+    def range_query(self, attr: str, low, high):
+        """
+        Returns all records where low <= record[attr] <= high.
+        Uses in-order traversal of the AVL index.
+        """
+        tree = self.indexes[attr]
+        root = self.roots[attr]
+        result_ids = []
+
+        def traverse(node):
+            if not node:
+                return
+            if node.key > low:
+                traverse(node.left)
+            if low <= node.key <= high:
+                result_ids.extend(node.value)
+            if node.key < high:
+                traverse(node.right)
+
+        traverse(root)
+        return [self.records[rid] for rid in result_ids]
+
+
+    # ---------------------------------------------------------
+    # DELETE RECORD
+    # ---------------------------------------------------------
+    def delete_record(self, record_id: int):
+        """
+        Deletes a record:
+        - Removes it from AVL indexes
+        - Marks it as None in raw storage
+        """
+        record = self.records[record_id]
+        if record is None:
+            return False
+
+        # Remove from indexes
+        for attr in self.index_attributes:
+            key = record[attr]
+            tree = self.indexes[attr]
+            root = self.roots[attr]
+
+            node = tree.search(root, key)
+            if node:
+                node.value.remove(record_id)
+                # If node becomes empty → remove key from AVL
+                if len(node.value) == 0:
+                    self.roots[attr] = tree.delete(root, key)
+
+        self.records[record_id] = None
+        return True
+
+
+    # ---------------------------------------------------------
+    # MODIFY RECORD
+    # ---------------------------------------------------------
+    def update_record(self, record_id: int, new_record: dict):
+        """
+        Update a record:
+        - Delete old record from indexes
+        - Insert updated record
+        """
+        self.delete_record(record_id)
+
+        # Insert and force the ID to remain the same
+        self.records[record_id] = new_record
+
+        for attr in self.index_attributes:
+            key = new_record[attr]
+            tree = self.indexes[attr]
+            root = self.roots[attr]
+
+            node = tree.search(root, key)
+            if node:
+                node.value.append(record_id)
+            else:
+                self.roots[attr] = tree.insert(root, key, [record_id])
+
+        return True
+
+
+    # ---------------------------------------------------------
+    # GET RECORD BY ID
+    # ---------------------------------------------------------
+    def get_record(self, record_id: int):
+        return self.records[record_id]
+
