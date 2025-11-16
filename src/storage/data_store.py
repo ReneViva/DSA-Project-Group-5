@@ -7,7 +7,8 @@
 # 4. Expose methods to get or modify data through indexes
 # Purpose: Link raw data with AVL trees for efficient access.
 
-from .avl_tree import AVLTree
+from avl_tree import AVLTree
+
 
 
 class DataStore:
@@ -163,3 +164,23 @@ class DataStore:
     def get_record(self, record_id: int):
         return self.records[record_id]
 
+# Testing to see if it works correctly
+if __name__ == "__main__":
+    ds = DataStore(index_attributes=["age", "rating"])
+
+    r1 = {"user_id": 1, "age": 25, "rating": 4.5}
+    r2 = {"user_id": 2, "age": 30, "rating": 3.8}
+    r3 = {"user_id": 3, "age": 22, "rating": 4.9}
+
+    id1 = ds.insert_record(r1)
+    id2 = ds.insert_record(r2)
+    id3 = ds.insert_record(r3)
+
+    print("Search by age 25:", ds.search_by_attr("age", 25))
+    print("Range query age 20-28:", ds.range_query("age", 20, 28))
+
+    ds.update_record(id1, {"user_id": 1, "age": 26, "rating": 4.6})
+    print("After update, search by age 26:", ds.search_by_attr("age", 26))
+
+    ds.delete_record(id2)
+    print("After deletion, search by age 30:", ds.search_by_attr("age", 30))
