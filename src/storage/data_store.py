@@ -7,37 +7,48 @@
 # 4. Expose methods to get or modify data through indexes
 # Purpose: Link raw data with AVL trees for efficient access.
 
-from avl_tree import AVLTree
-
+from collections import deque
+from src.storage.avl_tree import AVLTree
 
 
 class DataStore:
-
     def __init__(self, index_attributes: list):
         """
         index_attributes: list of fields to index with AVL Trees.
         Example: ["user_id", "age", "rating"]
         """
-        self.records = []                  # raw records (list of dicts)
-        self.index_attributes = index_attributes
+        self.records = []                  # raw records (list of dicts or None)
+        self.index_attributes = list(index_attributes)
 
         # Each indexed attribute gets its own AVL tree
-        self.indexes = {attr: AVLTree() for attr in index_attributes}
+        self.indexes = {attr: AVLTree() for attr in self.index_attributes}
 
         # Keep track of AVL roots
-        self.roots = {attr: None for attr in index_attributes}
+        self.roots = {attr: None for attr in self.index_attributes}
 
+        # Reuse freed IDs
+        self.free_ids = deque()
 
     # ---------------------------------------------------------
     # INSERT RECORD
     # ---------------------------------------------------------
     def insert_record(self, record: dict):
         """
-        Insert a new record into the raw storage and update AVL indexes.
-        Returns the record_id (its index in self.records).
+        Insert a new record into raw storage and update indexes.
+        Reuses a freed ID if available; otherwise appends.
+        Returns the record_id.
         """
-        record_id = len(self.records)
-        self.records.append(record)
+        # Validate record contains indexed keys
+        for attr in self.index_attributes:
+            if attr not in record:
+                raise KeyError(f"Record missing indexed attribute '{attr}'")
+
+        if self.free_ids:
+            record_id = self.free_ids.popleft()
+            self.records[record_id] = record
+        else:
+            record_id = len(self.records)
+            self.records.append(record)
 
         # Update each AVL index
         for attr in self.index_attributes:
@@ -45,16 +56,18 @@ class DataStore:
             tree = self.indexes[attr]
             root = self.roots[attr]
 
-            # If the key already exists, append to its list of record IDs
             node = tree.search(root, key)
             if node:
-                node.value.append(record_id)
+                # node.value is usually a list of record IDs
+                if isinstance(node.value, list):
+                    node.value.append(record_id)
+                else:
+                    node.value = [node.value, record_id]
             else:
-                # Create a new node with a list containing this record ID
+                # Insert new node; assign the (possibly changed) root
                 self.roots[attr] = tree.insert(root, key, [record_id])
 
         return record_id
-
 
     # ---------------------------------------------------------
     # LOOKUP EXACT VALUE
@@ -64,6 +77,9 @@ class DataStore:
         Returns list of records where record[attr] == key.
         Uses AVL index for fast lookup.
         """
+        if attr not in self.index_attributes:
+            raise ValueError(f"Attribute '{attr}' is not indexed.")
+
         tree = self.indexes[attr]
         root = self.roots[attr]
 
@@ -71,8 +87,8 @@ class DataStore:
         if not node:
             return []
 
-        return [self.records[rid] for rid in node.value]
-
+        # node.value is list of record ids
+        return [self.records[rid] for rid in node.value if 0 <= rid < len(self.records) and self.records[rid] is not None]
 
     # ---------------------------------------------------------
     # RANGE QUERY
@@ -80,8 +96,11 @@ class DataStore:
     def range_query(self, attr: str, low, high):
         """
         Returns all records where low <= record[attr] <= high.
-        Uses in-order traversal of the AVL index.
+        Uses in-order traversal of the AVL index to only visit relevant keys.
         """
+        if attr not in self.index_attributes:
+            raise ValueError(f"Attribute '{attr}' is not indexed.")
+
         tree = self.indexes[attr]
         root = self.roots[attr]
         result_ids = []
@@ -92,13 +111,12 @@ class DataStore:
             if node.key > low:
                 traverse(node.left)
             if low <= node.key <= high:
-                result_ids.extend(node.value)
+                result_ids.extend(node.value if isinstance(node.value, list) else [node.value])
             if node.key < high:
                 traverse(node.right)
 
         traverse(root)
-        return [self.records[rid] for rid in result_ids]
-
+        return [self.records[rid] for rid in result_ids if 0 <= rid < len(self.records) and self.records[rid] is not None]
 
     # ---------------------------------------------------------
     # DELETE RECORD
@@ -108,7 +126,12 @@ class DataStore:
         Deletes a record:
         - Removes it from AVL indexes
         - Marks it as None in raw storage
+        - Adds the id to free pool for reuse
+        Returns True if deleted, False if already None or invalid id.
         """
+        if record_id < 0 or record_id >= len(self.records):
+            return False
+
         record = self.records[record_id]
         if record is None:
             return False
@@ -121,29 +144,54 @@ class DataStore:
 
             node = tree.search(root, key)
             if node:
-                node.value.remove(record_id)
+                # remove the id if present
+                if isinstance(node.value, list):
+                    if record_id in node.value:
+                        node.value.remove(record_id)
+                else:
+                    if node.value == record_id:
+                        node.value = []
+
                 # If node becomes empty → remove key from AVL
-                if len(node.value) == 0:
+                node_empty = (not node.value) or (isinstance(node.value, list) and len(node.value) == 0)
+                if node_empty:
                     self.roots[attr] = tree.delete(root, key)
 
+        # mark deleted and add to free pool
         self.records[record_id] = None
+        self.free_ids.append(record_id)
         return True
-
 
     # ---------------------------------------------------------
     # MODIFY RECORD
     # ---------------------------------------------------------
     def update_record(self, record_id: int, new_record: dict):
         """
-        Update a record:
-        - Delete old record from indexes
-        - Insert updated record
+        Update a record in-place:
+        - Delete old record from indexes (but keep the slot)
+        - Insert updated record into same ID (so external references stay valid)
         """
+        if record_id < 0 or record_id >= len(self.records):
+            raise IndexError("record_id out of range")
+
+        # Validate new_record has indexed attributes
+        for attr in self.index_attributes:
+            if attr not in new_record:
+                raise KeyError(f"Updated record missing indexed attribute '{attr}'")
+
+        # Delete old record (this will put id into free_ids)
         self.delete_record(record_id)
 
-        # Insert and force the ID to remain the same
+        # Overwrite the slot with new record (reusing same id)
         self.records[record_id] = new_record
 
+        # If delete_record put the id into free_ids, remove it since we reused it
+        try:
+            self.free_ids.remove(record_id)
+        except ValueError:
+            pass  # not in free_ids
+
+        # Re-insert into indexes (same logic as insert_record)
         for attr in self.index_attributes:
             key = new_record[attr]
             tree = self.indexes[attr]
@@ -151,36 +199,19 @@ class DataStore:
 
             node = tree.search(root, key)
             if node:
-                node.value.append(record_id)
+                if isinstance(node.value, list):
+                    node.value.append(record_id)
+                else:
+                    node.value = [node.value, record_id]
             else:
                 self.roots[attr] = tree.insert(root, key, [record_id])
 
         return True
 
-
     # ---------------------------------------------------------
     # GET RECORD BY ID
     # ---------------------------------------------------------
     def get_record(self, record_id: int):
+        if record_id < 0 or record_id >= len(self.records):
+            return None
         return self.records[record_id]
-
-# Testing to see if it works correctly
-if __name__ == "__main__":
-    ds = DataStore(index_attributes=["age", "rating"])
-
-    r1 = {"user_id": 1, "age": 25, "rating": 4.5}
-    r2 = {"user_id": 2, "age": 30, "rating": 3.8}
-    r3 = {"user_id": 3, "age": 22, "rating": 4.9}
-
-    id1 = ds.insert_record(r1)
-    id2 = ds.insert_record(r2)
-    id3 = ds.insert_record(r3)
-
-    print("Search by age 25:", ds.search_by_attr("age", 25))
-    print("Range query age 20-28:", ds.range_query("age", 20, 28))
-
-    ds.update_record(id1, {"user_id": 1, "age": 26, "rating": 4.6})
-    print("After update, search by age 26:", ds.search_by_attr("age", 26))
-
-    ds.delete_record(id2)
-    print("After deletion, search by age 30:", ds.search_by_attr("age", 30))
