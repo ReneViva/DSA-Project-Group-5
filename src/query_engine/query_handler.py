@@ -21,12 +21,9 @@ from __future__ import annotations
 
 from typing import Any, List
 
-# Flexible imports so this module works both in the project package
-# (src.query_engine) and as a standalone file for testing.
-try:
-    from src.storage.data_store import DataStore
-except ImportError:  # running directly / in tests
-    from data_store_new import DataStore  # type: ignore
+
+from src.storage.data_store import DataStore
+
 
 
 class QueryEngine:
