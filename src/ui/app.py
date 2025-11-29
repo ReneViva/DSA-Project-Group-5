@@ -21,6 +21,8 @@ from src.analytics.search_by_appid import search_by_appid_section
 from src.analytics.search_by_name import search_by_name_section
 from src.analytics.price_range import price_range_section
 from src.analytics.basic_analytics import basic_analytics_section
+from src.analytics.graph_explorer import render_graph_explorer
+
 
 
 # === Cached helpers ===
@@ -79,3 +81,8 @@ price_range_section(app_engine)
 
 # 7) Section 6 – basic analytics
 basic_analytics_section(indexed_apps)
+
+
+with st.spinner("Loading and cleaning CSV files..."):
+    cleaned_data = load_clean_data()
+render_graph_explorer(cleaned_data)
