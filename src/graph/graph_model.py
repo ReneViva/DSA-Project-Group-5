@@ -233,3 +233,45 @@ def build_dev_pub_graph(cleaned_data):
                     data["weight"] += 1
 
     return g, dev_vertices, pub_vertices
+
+def developer_with_most_publisher_collaborations(graph, dev_vertices):
+    """
+    Returns (developer_vertex, total_collaborations)
+
+    total_collaborations is the sum of weights of edges between the developer
+    and all publishers.
+    """
+    max_dev = None
+    max_weight = -1
+
+    for dev in dev_vertices.values():
+        total = 0
+        # incident_edges(dev) gives all edges connected to this dev
+        for edge in graph.incident_edges(dev):
+            data = edge.element()
+            if data and "weight" in data:
+                total += data["weight"]
+
+        if total > max_weight:
+            max_weight = total
+            max_dev = dev
+
+    return max_dev, max_weight
+
+
+def get_publisher_collaborations_for_developer(graph, developer_vertex):
+    """
+    Returns a list of tuples:
+       (publisher_vertex, weight, game_ids_set)
+    """
+    results = []
+
+    for edge in graph.incident_edges(developer_vertex):
+        publisher = graph.opposite(developer_vertex, edge)
+        data = edge.element()
+        weight = data.get("weight", 0)
+        games = data.get("games", set())
+        results.append((publisher, weight, games))
+
+    return results
+
