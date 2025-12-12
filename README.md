@@ -19,7 +19,7 @@ Our MiniDB supports:
 * Graph-based relationships and traversal
 * Analytical operations (min, max, average, top-K)
 * Manual AVL Tree indexing for efficiency
-* A minimal interactive **Streamlit** UI
+* An interactive **Streamlit** UI
 
 This project applies the core **data structures and algorithms** learned during the semester — especially **AVL Trees** and **Graph Algorithms** — to create a functional and efficient system.
 
@@ -28,42 +28,67 @@ This project applies the core **data structures and algorithms** learned during 
 ## 📁 Folder Structure
 
 ```
-MiniDB/
+DSA-Project-Group-5/
 │
-├── data/                         # Dataset files (Steam dataset or subsets)
-│   ├── games.csv
-│   ├── reviews.csv
-│   └── developers_publishers.csv
+├── main.py                         # Application entry point (launches Streamlit UI)
+├── README.md                       # Project documentation
+├── Project description.pdf         # Original project specification
+│
+├── data/                           # Steam dataset (CSV files)
+│   ├── applications.csv
+│   ├── application_categories.csv
+│   ├── application_developers.csv
+│   ├── application_genres.csv
+│   ├── application_platforms.csv
+│   ├── application_publishers.csv
+│   ├── categories.csv
+│   ├── developers.csv
+│   ├── genres.csv
+│   ├── platforms.csv
+│   ├── publishers.csv
+│   └── reviews_final.csv
 │
 ├── src/
 │   ├── __init__.py
-│   ├── storage/                  # Core storage and indexing logic
-│   │   ├── avl_tree.py           # Manual AVL tree implementation
-│   │   └── data_store.py         # In-memory storage (list/dict)
 │   │
-│   ├── query_engine/             # CRUD and range queries
-│   │   └── query_handler.py
+│   ├── storage/                    # Core storage and indexing layer
+│   │   ├── avl_tree.py             # Manual AVL tree implementation
+│   │   ├── data_store.py           # In-memory data store with AVL indexes
+│   │   └── __init__.py
 │   │
-│   ├── graph/                    # Graph-based features
-│   │   ├── graph_model.py
-│   │   └── graph_algorithms.py
+│   ├── query_engine/               # CRUD operations and range queries
+│   │   ├── query_handler.py
+│   │   └── __init__.py
 │   │
-│   ├── analytics/                # Statistical and analytical operations
-│   │   └── analytics.py
+│   ├── graph/                      # Graph-based features
+│   │   ├── graph_model.py          # Adjacency-map graph implementation
+│   │   ├── graph_algorithms.py     # BFS, DFS, shortest path, components
+│   │   └── __init__.py
 │   │
-│   ├── ui/                       # Streamlit frontend
-│   │   └── app.py
+│   ├── analytics/                  # Analytics and querying UI components
+│   │   ├── dataset_status.py       # Dataset loading overview
+│   │   ├── indexed_engine.py       # Indexed query engine builder
+│   │   ├── search_by_appid.py      # Indexed search by appid
+│   │   ├── search_by_name.py       # Linear name search (subset)
+│   │   ├── price_range.py          # AVL-based price range queries
+│   │   ├── basic_analytics.py      # Min / max / avg / median statistics
+│   │   ├── graph_explorer.py       # Graph exploration UI
+│   │   └── __init__.py
 │   │
-│   └── utils/                    # Helpers, loaders, benchmarks
-│       └── data_loader.py
+│   ├── ui/                         # Streamlit frontend
+│   │   ├── app.py                  # Main Streamlit application
+│   │   ├── graph_explorer.py       # Advanced graph UI (slice + full modes)
+│   │   └── __init__.py
+│   │
+│   ├── utils/                      # Utilities and data loading
+│   │   ├── data_loader.py          # CSV loader and cleaner (no pandas)
+│   │   ├── schemas.py              # Dataset schemas and type definitions
+│   │   └── __init__.py
+│   │
+│   └── test_storage.py             # Storage and AVL testing
 │
-├── report/
-│   ├── technical_report.pdf
-│   └── performance_analysis.md
-│
-├── README.md                     # (You are here)
-└── requirements.txt
-```
+└── .gitignore                      # Git ignore rules
+
 
 ---
 
@@ -73,12 +98,13 @@ MiniDB/
 
 **Libraries Used:**
 
-* `pandas` → for data loading and preprocessing
-* `numpy` → for numerical operations
-* `networkx` → for graph representation and algorithms
-* `streamlit` → for minimal user interface
-* `matplotlib` or `plotly` → (optional) for visualizing analytics
-* `time` → for performance benchmarking
+* `streamlit` — interactive web-based user interface
+* `os` — file system and path operations
+* `sys` — Python path and runtime configuration
+* `csv` — reading and parsing CSV dataset files
+* `collections` — efficient data structures (deque, defaultdict)
+* `statistics` — basic statistical calculations (e.g., median)
+* `typing` — type annotations for clarity and maintainability
 
 ---
 
@@ -160,8 +186,6 @@ MiniDB/
 * Compare with linear search for validation.
 * Print in-order traversal to verify balancing.
 
-💬 *Comment:* AVL trees ensure **O(log n)** performance for search, insert, and delete — perfect for a large dataset.
-
 ---
 
 ## 🔹 **PHASE 3: Query Engine**
@@ -189,35 +213,31 @@ Implement core MiniDB functions in `query_handler.py`:
 * Use Python’s `time` library to record operation time for each query type.
 * Store results in `performance_analysis.md`.
 
-💬 *Tip:* Demonstrate complexity comparison (e.g., AVL vs linear search) in your final report.
-
 ---
 
-## 🔹 **PHASE 4: Graph Features**
+## 🔹 PHASE 4: Graph Features
 
-### Step 4.1 — Graph Representation
+### **Step 4.1 — Graph Representation**
 
-* Use `networkx` to model relationships:
-
-  * Nodes: Developers / Publishers
-  * Edges: Collaboration (if a developer and publisher worked on the same game)
+Use a custom graph implementation (no external libraries):
+Nodes: Developers and Publishers
+Edges: Collaboration between a developer and publisher if they worked on the same game
+Edge weight: Number of shared games
 
 ### Step 4.2 — Implement Graph Algorithms
 
-Add functions in `graph_algorithms.py`:
+Implemented in graph_algorithms.py:
+* `bfs_traversal(start_vertex)`
+* `dfs_traversal(start_vertex)`
+* `shortest_path(start_vertex, target_vertex)` (unweighted)
+* `connected_components()` (collaboration clustering)
 
-* `bfs_traversal(node)`
-* `dfs_traversal(node)`
-* `shortest_path(dev1, dev2)`
-* `connected_components()`
-
-### Step 4.3 — Visualization (Optional)
-
-* Use `networkx.draw()` or `plotly` to show developer–publisher networks.
-
-💬 *Tip:* Graphs can be large — test traversal on subsets before scaling up.
-
----
+### Step 4.3 — Exploration (UI-Based)
+*Graph exploration is done via a Streamlit interface:
+  * Neighbor inspection
+  * BFS / DFS traversal output
+  * Connected component analysis
+  * Large graphs are handled by operating on dataset subsets for performance.
 
 ## 🔹 **PHASE 5: Final Integration & UI**
 
@@ -248,16 +268,6 @@ Add functions in `graph_algorithms.py`:
   3. Run search and graph queries
   4. View analytics in UI
 
----
-
-## 📈 Performance Analysis
-
-Include in your report:
-
-* Time complexity for search, insertion, deletion (O(log n))
-* Range query complexity (O(k + log n))
-* Graph traversal complexity (O(V + E))
-* Benchmarks comparing indexed vs non-indexed lookups
 
 ---
 
@@ -267,7 +277,7 @@ Include in your report:
 ✅ `README.md` (this file)
 ✅ Technical Report (2–4 pages)
 ✅ Streamlit UI demo
-✅ Presentation (final week)
+✅ Presentation
 
 ---
 
@@ -275,16 +285,6 @@ Include in your report:
 
 * Kaggle Steam Dataset 2025 — Multi-Modal Gaming Analytics
 * AVL Tree algorithms (CLRS, GeeksforGeeks, and textbook references)
-* NetworkX documentation
 * Streamlit official docs
 
 ---
-
-### ✅ End of README
-
-> *Once each phase is completed and tested, push your updates to the team’s GitHub repo. Use commits like:*
-> “Phase 2 Complete — Added AVL Tree and Indexing Layer.”
-
----
-
-Would you like me to also prepare a **matching technical report template (2–4 pages)** with dataset schema, complexity analysis, and sample query examples next? It would pair perfectly with this README for your final submission.
