@@ -1,14 +1,10 @@
 # ======================= GRAPH MODEL =======================
-# This file builds a graph structure representing relationships in the dataset.
-# Steps:
-# 1. Create nodes (e.g., developers, publishers)
-# 2. Add edges for collaborations or relationships
-# 3. Use NetworkX Graph for implementation
-# 4. Provide methods to build and access the graph
-# Purpose: Prepare the graph layer for running algorithms like BFS/DFS later.
-# ======================= GRAPH MODEL =======================
 # Adjacency-map graph implementation (no external libraries).
 # Supports undirected graphs by default.
+#
+# This file builds a graph structure representing relationships in the dataset.
+# Example: Developer ↔ Publisher collaborations (weighted by shared apps).
+# ===========================================================
 
 from collections import defaultdict
 
@@ -174,18 +170,20 @@ def build_dev_pub_graph(cleaned_data):
     dev_vertices = {}
     for row in developers:
         dev_id = row.get("id")
+        if dev_id is None:
+            continue
         v = g.insert_vertex(element=row, kind="developer", id_=dev_id)
         dev_vertices[dev_id] = v
 
     pub_vertices = {}
     for row in publishers:
         pub_id = row.get("id")
+        if pub_id is None:
+            continue
         v = g.insert_vertex(element=row, kind="publisher", id_=pub_id)
         pub_vertices[pub_id] = v
 
     # --- group app → devs / pubs ---
-
-    from collections import defaultdict
 
     app_to_devs = defaultdict(list)
     for row in app_devs:
@@ -205,7 +203,7 @@ def build_dev_pub_graph(cleaned_data):
 
     # --- insert edges for collaborations ---
 
-    edge_lookup = {}   # (dev_id, pub_id) -> Edge
+    edge_lookup = {}  # (dev_id, pub_id) -> Edge
 
     for appid, dev_ids in app_to_devs.items():
         pub_ids = app_to_pubs.get(appid, [])
@@ -219,7 +217,10 @@ def build_dev_pub_graph(cleaned_data):
                 if pid not in pub_vertices:
                     continue
 
-                key = (did, pid) if did <= pid else (pid, did)
+                # IMPORTANT: dev_id and pub_id are in different ID spaces,
+                # so do NOT sort/mix them.
+                key = (did, pid)
+
                 if key not in edge_lookup:
                     u = dev_vertices[did]
                     v = pub_vertices[pid]
@@ -228,62 +229,66 @@ def build_dev_pub_graph(cleaned_data):
                     edge_lookup[key] = e
                 else:
                     e = edge_lookup[key]
-                    data = e.element()
-                    data["games"].add(appid)
-                    data["weight"] += 1
+                    data = e.element() or {}
+                    data.setdefault("games", set()).add(appid)
+                    data["weight"] = int(data.get("weight", 0)) + 1
+                    # ensure edge still points at updated dict
+                    e._element = data  # (safe here since Edge stores dict)
 
     return g, dev_vertices, pub_vertices
 
 
-# def developer_with_most_publisher_collaborations(graph, dev_vertices):
-#     """
-#     Returns (developer_vertex, total_collaborations)
+def developer_with_most_publisher_collaborations(graph, dev_vertices):
+    """
+    Returns (developer_vertex, total_collaborations)
 
-#     total_collaborations is the sum of weights of edges between the developer
-#     and all publishers.
-#     """
-#     max_dev = None
-#     max_weight = -1
+    total_collaborations is the sum of weights of edges between the developer
+    and all publishers.
+    """
+    max_dev = None
+    max_weight = -1
 
-#     for dev in dev_vertices.values():
-#         total = 0
-#         # incident_edges(dev) gives all edges connected to this dev
-#         for edge in graph.incident_edges(dev):
-#             data = edge.element()
-#             if data and "weight" in data:
-#                 total += data["weight"]
+    for dev in dev_vertices.values():
+        total = 0
+        # incident_edges(dev) gives all edges connected to this dev
+        for edge in graph.incident_edges(dev):
+            data = edge.element() or {}
+            total += int(data.get("weight", 0))
 
-#         if total > max_weight:
-#             max_weight = total
-#             max_dev = dev
+        if total > max_weight:
+            max_weight = total
+            max_dev = dev
 
-#     return max_dev, max_weight
+    return max_dev, max_weight
 
-# def get_publisher_collaborations_for_developer(graph, developer_vertex):
-#     """
-#     Returns a list of tuples:
-#        (publisher_vertex, weight, game_ids_set)
-#     """
-#     results = []
 
-#     for edge in graph.incident_edges(developer_vertex):
-#         publisher = graph.opposite(developer_vertex, edge)
-#         data = edge.element()
-#         weight = data.get("weight", 0)
-#         games = data.get("games", set())
-#         results.append((publisher, weight, games))
+def get_publisher_collaborations_for_developer(graph, developer_vertex):
+    """
+    Returns a list of tuples:
+       (publisher_vertex, weight, game_ids_set)
+    """
+    results = []
 
-#     return results
+    for edge in graph.incident_edges(developer_vertex):
+        other = graph.opposite(developer_vertex, edge)
+        # Only publishers should be returned (bipartite safety)
+        if hasattr(other, "kind") and other.kind() != "publisher":
+            continue
 
+        data = edge.element() or {}
+        weight = int(data.get("weight", 0))
+        games = data.get("games", set())
+        results.append((other, weight, games))
+
+    return results
+
+
+# -------------------- Example usage (optional) --------------------
 # g, dev_vertices, pub_vertices = build_dev_pub_graph(cleaned_data)
-
-# # --- find the top developer ---
+#
 # top_dev, count = developer_with_most_publisher_collaborations(g, dev_vertices)
 # print("Top Developer:", top_dev, "Total collaborations:", count)
-
-# # --- get details of their publisher collaborations ---
+#
 # collabs = get_publisher_collaborations_for_developer(g, top_dev)
 # for pub, weight, games in collabs:
 #     print(f"{top_dev} ↔ {pub}: {weight} collaborations, games={games}")
-
-# For lika's learning purposes 

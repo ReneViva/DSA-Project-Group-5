@@ -83,6 +83,4 @@ price_range_section(app_engine)
 basic_analytics_section(indexed_apps)
 
 
-with st.spinner("Loading and cleaning CSV files..."):
-    cleaned_data = load_clean_data()
 render_graph_explorer(cleaned_data)
